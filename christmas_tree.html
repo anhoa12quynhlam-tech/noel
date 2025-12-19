@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giáng Sinh 2024 - Full Power</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: radial-gradient(circle at center, #0e1018 0%, #000000 100%);
+        height: 100vh;
+        font-family: "Times New Roman", serif;
+        user-select: none;
+      }
+
+      canvas {
+        display: block;
+        cursor: default;
+      }
+
+      /* --- UI ELEMENTS --- */
+      .btn-circle {
+        position: absolute;
+        top: 20px;
+        width: 45px;
+        height: 45px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        color: #ffd700;
+        font-size: 1.4rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        z-index: 101;
+        backdrop-filter: blur(5px);
+        transition: all 0.3s;
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+      }
+      .btn-circle:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: scale(1.1);
+      }
+      .settings-btn {
+        right: 20px;
+      }
+      .fullscreen-btn {
+        right: 80px;
+        font-size: 1.8rem;
+      }
+
+      .controls {
+        position: absolute;
+        top: 80px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.85);
+        padding: 15px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #fff;
+        width: 220px;
+        z-index: 100;
+        font-family: "Arial", sans-serif;
+        transition: all 0.4s;
+        transform-origin: top right;
+      }
+      .controls.hidden {
+        opacity: 0;
+        transform: scale(0.8) translateY(-20px);
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .control-group {
+        margin-bottom: 12px;
+      }
+      .control-group label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        margin-bottom: 5px;
+        color: #ffd700;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+      input[type="range"] {
+        width: 100%;
+        cursor: pointer;
+        accent-color: #ff3333;
+        height: 4px;
+      }
+      button.action-btn {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        background: linear-gradient(45deg, #d32f2f, #b71c1c);
+        border: none;
+        color: white;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .message {
+        position: absolute;
+        bottom: 40px;
+        width: 100%;
+        text-align: center;
+        pointer-events: none;
+        opacity: 0;
+        animation: fadeInMessage 2s forwards;
+        animation-delay: 1s;
+      }
+      @keyframes fadeInMessage {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .main-text {
+        font-size: 4rem;
+        font-weight: 800;
+        letter-spacing: 3px;
+        background: linear-gradient(to bottom, #fff 20%, #ffd700 80%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 40px rgba(255, 215, 0, 0.4);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      class="btn-circle fullscreen-btn"
+      onclick="toggleFullScreen()"
+      title="Toàn màn hình"
+    >
+      ⛶
+    </div>
+    <div
+      class="btn-circle settings-btn"
+      onclick="toggleControls()"
+      title="Cài đặt"
+    >
+      ⚙️
+    </div>
+
+    <div class="controls" id="controlPanel">
+      <div class="control-group">
+        <label>🎥 Góc Nhìn</label>
+        <input
+          type="range"
+          id="angleRange"
+          min="0"
+          max="1.4"
+          step="0.05"
+          value="0.3"
+        />
+      </div>
+      <div class="control-group">
+        <label>🌲 Độ Rộng</label>
+        <input
+          type="range"
+          id="widthRange"
+          min="200"
+          max="500"
+          step="10"
+          value="340"
+        />
+      </div>
+      <div class="control-group">
+        <label>🚀 Tốc Độ Ráp</label>
+        <input
+          type="range"
+          id="assemblySpeedRange"
+          min="0.1"
+          max="5"
+          step="0.1"
+          value="1.5"
+        />
+      </div>
+      <div class="control-group">
+        <label>🔄 Tốc Độ Xoay</label>
+        <input
+          type="range"
+          id="rotationSpeedRange"
+          min="0"
+          max="0.02"
+          step="0.001"
+          value="0.004"
+        />
+      </div>
+      <button class="action-btn" onclick="resetAnimation()">🎬 Ráp Lại</button>
+    </div>
+
+    <div class="message">
+      <div class="main-text">Merry Christmas</div>
+    </div>
+
+    <canvas id="xmasTree3D"></canvas>
+
+    <script>
+      const canvas = document.getElementById("xmasTree3D");
+      const ctx = canvas.getContext("2d");
+
+      const controlPanel = document.getElementById("controlPanel");
+      const settingsBtn = document.querySelector(".settings-btn");
+      const fullscreenBtn = document.querySelector(".fullscreen-btn");
+
+      function toggleControls() {
+        controlPanel.classList.toggle("hidden");
+        settingsBtn.innerHTML = controlPanel.classList.contains("hidden")
+          ? "⚙️"
+          : "✖";
+      }
+
+      function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+          try {
+            document.documentElement.requestFullscreen();
+          } catch (e) {}
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+        }
+      }
+      document.addEventListener(
+        "fullscreenchange",
+        () => (fullscreenBtn.innerHTML = document.fullscreenElement ? "↙" : "⛶")
+      );
+
+      // Config
+      const angleInput = document.getElementById("angleRange");
+      const widthInput = document.getElementById("widthRange");
+      const assemblySpeedInput = document.getElementById("assemblySpeedRange");
+      const rotationSpeedInput = document.getElementById("rotationSpeedRange");
+
+      let width, height;
+      let renderList = [],
+        snow = [],
+        magicParticles = [];
+      let animationFrameCount = 0;
+
+      const config = {
+        treeHeight: 460,
+        trunkHeight: 70,
+        trunkRadius: 35,
+        baseRadius: parseInt(widthInput.value),
+        leafCount: 3800,
+        lightCount: 450,
+        giftCount: 16,
+        stockingCount: 12,
+        layerCount: 9,
+        focalLength: 850,
+        cameraZ: -1150,
+        cameraXAngle: parseFloat(angleInput.value),
+        rotationSpeed: parseFloat(rotationSpeedInput.value),
+        assemblySpeedMult: parseFloat(assemblySpeedInput.value),
+        autoRotate: true,
+        lightSpiralTurns: 7,
+      };
+
+      let currentAngleY = 0;
+      let mouseX = 0,
+        mouseY = 0;
+      let cosCamX, sinCamX;
+
+      // --- GLOBAL LIGHT STATE ---
+      let globalLightState = {
+        mode: "WAVE",
+        wavePos: 0,
+        blinkOn: false,
+        cycleFrame: 0,
+      };
+
+      function updateCamera() {
+        config.cameraXAngle = -parseFloat(angleInput.value);
+        cosCamX = Math.cos(config.cameraXAngle);
+        sinCamX = Math.sin(config.cameraXAngle);
+      }
+      updateCamera();
+      function updateTreeWidth() {
+        config.baseRadius = parseInt(widthInput.value);
+        resetAnimation();
+      }
+
+      angleInput.addEventListener("input", updateCamera);
+      widthInput.addEventListener("input", updateTreeWidth);
+      rotationSpeedInput.addEventListener(
+        "input",
+        () => (config.rotationSpeed = parseFloat(rotationSpeedInput.value))
+      );
+      assemblySpeedInput.addEventListener(
+        "input",
+        () => (config.assemblySpeedMult = parseFloat(assemblySpeedInput.value))
+      );
+
+      class Point3D {
+        constructor(tx, ty, tz) {
+          this.tx = tx;
+          this.ty = ty;
+          this.tz = tz;
+          this.x = (Math.random() - 0.5) * 6000;
+          this.y = (Math.random() - 0.5) * 6000;
+          this.z = (Math.random() - 0.5) * 6000;
+          this.delay = Math.random() * 200;
+          this.baseSpeed = 0.02 + Math.random() * 0.04;
+          this.rz = 0;
+          this.sx = 0;
+          this.sy = 0;
+          this.scale = 1;
+        }
+        updatePosition(frame) {
+          if (frame < this.delay) return;
+          let currentSpeed = this.baseSpeed * config.assemblySpeedMult;
+          if (currentSpeed > 0.6) currentSpeed = 0.6;
+          this.x += (this.tx - this.x) * currentSpeed;
+          this.y += (this.ty - this.y) * currentSpeed;
+          this.z += (this.tz - this.z) * currentSpeed;
+        }
+        project(angleY) {
+          const cosY = Math.cos(angleY);
+          const sinY = Math.sin(angleY);
+          let x1 = this.x * cosY - this.z * sinY;
+          let y1 = this.y;
+          let z1 = this.x * sinY + this.z * cosY;
+          let y2 = y1 * cosCamX - z1 * sinCamX;
+          let z2 = y1 * sinCamX + z1 * cosCamX;
+          this.rz = z2;
+          const zPerspective = z2 - config.cameraZ;
+          if (zPerspective > 100) {
+            this.scale = config.focalLength / zPerspective;
+            this.sx = width / 2 + x1 * this.scale;
+            let viewOffset = parseFloat(angleInput.value) * 150;
+            this.sy = height / 2 - y2 * this.scale + height * 0.4 + viewOffset;
+          } else {
+            this.scale = 0;
+          }
+        }
+      }
+
+      class TrunkPart extends Point3D {
+        constructor(tx, ty, tz) {
+          super(tx, ty, tz);
+          this.delay = Math.random() * 60;
+          const l = 15 + Math.random() * 10;
+          this.color = `hsl(25, 30%, ${l}%)`;
+          this.baseSize = 4;
+        }
+        draw(ctx) {
+          if (this.scale <= 0) return;
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.sx, this.sy, this.baseSize * this.scale, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      class DirectionalLeaf extends Point3D {
+        constructor(tx, ty, tz, color) {
+          super(tx, ty, tz);
+          this.color = color;
+          this.outwardAngle = Math.atan2(tz, tx);
+          this.leafLen = 15 + Math.random() * 10;
+          this.spread = 0.5;
+        }
+        draw(ctx, currentTreeRotation) {
+          if (this.scale <= 0) return;
+          let finalAngle = this.outwardAngle + currentTreeRotation;
+          let dirX = Math.cos(finalAngle);
+          let drawLen = this.leafLen * this.scale;
+
+          ctx.strokeStyle = this.color;
+          ctx.lineWidth = 2 * this.scale;
+          ctx.lineCap = "round";
+
+          ctx.beginPath();
+          ctx.moveTo(this.sx, this.sy);
+          ctx.lineTo(this.sx + dirX * drawLen, this.sy + drawLen * 0.8);
+          ctx.moveTo(this.sx, this.sy);
+          ctx.lineTo(
+            this.sx + Math.cos(finalAngle - this.spread) * drawLen * 0.8,
+            this.sy + drawLen * 0.9
+          );
+          ctx.moveTo(this.sx, this.sy);
+          ctx.lineTo(
+            this.sx + Math.cos(finalAngle + this.spread) * drawLen * 0.8,
+            this.sy + drawLen * 0.9
+          );
+          ctx.stroke();
+        }
+      }
+
+      // --- ĐÈN LED: LOGIC MỚI (50% TRAIL) ---
+      class Light extends Point3D {
+        constructor(tx, ty, tz) {
+          super(tx, ty, tz);
+          const colors = [
+            "#ff3333",
+            "#ffdd00",
+            "#44e0ff",
+            "#ffffff",
+            "#ff00ff",
+            "#00ff00",
+          ];
+          this.baseColor = colors[Math.floor(Math.random() * colors.length)];
+          this.baseSize = 4;
+          this.delay += 100;
+          this.opacityMultiplier = 0;
+          this.normalizedHeight = (ty - config.trunkHeight) / config.treeHeight;
+        }
+        draw(ctx, frame) {
+          if (this.scale <= 0) return;
+          let fadeSpeed = 0.01 * config.assemblySpeedMult;
+          if (frame > this.delay && this.opacityMultiplier < 1)
+            this.opacityMultiplier += fadeSpeed;
+          if (this.opacityMultiplier <= 0) return;
+
+          let intensity = 0.1; // Mặc định tối
+
+          if (globalLightState.mode === "WAVE") {
+            let wavePos = globalLightState.wavePos;
+            let h = this.normalizedHeight;
+            let dist = wavePos - h;
+
+            if (dist > 0) {
+              // Đèn đã được quét qua -> Giữ sáng 50%
+              let base = 0.5;
+
+              // Nếu sóng đã vượt quá đỉnh cây (wavePos > 1.0)
+              // Tăng dần độ sáng nền từ 50% lên 100% cho TẤT CẢ đèn
+              if (wavePos > 1.0) {
+                let finishProgress = (wavePos - 1.0) / 0.2; // Trong khoảng 0.2 đơn vị sóng
+                if (finishProgress > 1) finishProgress = 1;
+                base = 0.5 + 0.5 * finishProgress; // 0.5 -> 1.0
+              }
+
+              intensity = base;
+
+              // Hiệu ứng đầu sóng (Head) sáng rực 100%
+              if (dist < 0.3) {
+                let head = 1 - dist / 0.3;
+                intensity += 0.5 * head;
+              }
+            }
+          } else if (globalLightState.mode === "BLINK") {
+            intensity = globalLightState.blinkOn ? 1.0 : 0.1;
+          }
+
+          if (intensity > 1) intensity = 1;
+
+          let finalOpacity = intensity * this.opacityMultiplier;
+          let s = this.scale;
+
+          // Glow
+          if (intensity > 0.6) {
+            ctx.globalAlpha = finalOpacity * 0.5;
+            ctx.fillStyle = this.baseColor;
+            ctx.beginPath();
+            ctx.arc(this.sx, this.sy, this.baseSize * s * 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Core
+          ctx.globalAlpha = finalOpacity;
+          ctx.fillStyle = this.baseColor;
+          ctx.beginPath();
+          ctx.arc(this.sx, this.sy, this.baseSize * s, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Hotspot
+          if (intensity > 0.9) {
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(this.sx, this.sy, this.baseSize * s * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
+      class GiftBox extends Point3D {
+        constructor(tx, ty, tz) {
+          super(tx, ty, tz);
+          this.baseSize = 24 + Math.random() * 16;
+          this.delay += 150;
+          this.boxColor = Math.random() > 0.5 ? "#d32f2f" : "#ffd700";
+          this.ribbonColor =
+            this.boxColor === "#d32f2f" ? "#ffffff" : "#d32f2f";
+        }
+        draw(ctx) {
+          if (this.scale <= 0) return;
+          let s = this.baseSize * this.scale;
+          if (s < 4) return;
+          ctx.fillStyle = this.boxColor;
+          ctx.fillRect(this.sx - s / 2, this.sy - s / 2, s, s);
+          ctx.fillStyle = this.ribbonColor;
+          let ribbonWidth = s * 0.2;
+          ctx.fillRect(
+            this.sx - ribbonWidth / 2,
+            this.sy - s / 2,
+            ribbonWidth,
+            s
+          );
+          ctx.fillRect(
+            this.sx - s / 2,
+            this.sy - ribbonWidth / 2,
+            s,
+            ribbonWidth
+          );
+        }
+      }
+
+      class Stocking extends Point3D {
+        constructor(tx, ty, tz) {
+          super(tx, ty, tz);
+          this.baseSize = 20 + Math.random() * 12;
+          this.delay += 180;
+        }
+        draw(ctx) {
+          if (this.scale <= 0) return;
+          let s = this.baseSize * this.scale;
+          if (s < 4) return;
+          ctx.fillStyle = "#d32f2f";
+          ctx.beginPath();
+          ctx.fillRect(this.sx - s / 2.5, this.sy - s / 2, s / 1.8, s);
+          ctx.fillRect(this.sx - s / 2.5, this.sy + s / 4, s, s / 2.5);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.fillRect(
+            this.sx - s / 2,
+            this.sy - s / 2 - s * 0.1,
+            s / 1.2,
+            s * 0.3
+          );
+          ctx.fill();
+        }
+      }
+
+      class StarTop extends Point3D {
+        constructor() {
+          super(0, config.trunkHeight + config.treeHeight + 8, 0);
+          this.outerRadius = 50;
+          this.innerRadius = 25;
+          this.delay = 200;
+          this.startScale = 0;
+        }
+        draw(ctx, frame) {
+          if (this.scale <= 0) return;
+          let growSpeed = 0.03 * config.assemblySpeedMult;
+          if (frame > this.delay)
+            this.startScale += (1 - this.startScale) * growSpeed;
+          if (this.startScale < 0.01) return;
+
+          ctx.save();
+          ctx.translate(this.sx, this.sy);
+          ctx.scale(this.startScale, this.startScale);
+          ctx.rotate(frame * 0.01);
+
+          let starGlow = 0.4;
+          if (globalLightState.mode === "WAVE") {
+            // Sáng rực khi sóng chạm đỉnh
+            if (
+              globalLightState.wavePos > 0.95 &&
+              globalLightState.wavePos < 1.25
+            )
+              starGlow = 1.0;
+          } else {
+            starGlow = globalLightState.blinkOn ? 1.0 : 0.2;
+          }
+
+          ctx.globalAlpha = starGlow * 0.6;
+          ctx.fillStyle = "#ffd700";
+          ctx.beginPath();
+          ctx.arc(0, 0, this.outerRadius * this.scale * 2, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = starGlow > 0.9 ? "#ffffff" : "#ffd700";
+          ctx.beginPath();
+          for (let i = 0; i < 5; i++) {
+            ctx.lineTo(
+              Math.cos(((18 + i * 72) * Math.PI) / 180) *
+                this.outerRadius *
+                this.scale,
+              -Math.sin(((18 + i * 72) * Math.PI) / 180) *
+                this.outerRadius *
+                this.scale
+            );
+            ctx.lineTo(
+              Math.cos(((54 + i * 72) * Math.PI) / 180) *
+                this.innerRadius *
+                this.scale,
+              -Math.sin(((54 + i * 72) * Math.PI) / 180) *
+                this.innerRadius *
+                this.scale
+            );
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      class Snowflake {
+        constructor() {
+          this.reset(true);
+        }
+        reset(initial = false) {
+          this.x = Math.random() * width;
+          this.y = initial ? Math.random() * height : -20;
+          this.z = Math.random() * 1000 - 500;
+          this.speed = 1 + Math.random() * 2;
+          this.baseSize = 2 + Math.random() * 3;
+          this.opacity = 0.3 + Math.random() * 0.4;
+        }
+        update() {
+          this.y += this.speed;
+          if (this.y > height + 20) this.reset();
+        }
+        draw(ctx) {
+          const scale =
+            config.focalLength / (config.focalLength + this.z + 600);
+          const size = this.baseSize * scale;
+          if (size <= 0.2) return;
+          ctx.globalAlpha = this.opacity * (scale > 1 ? 1 : scale);
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      class MagicParticle {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.size = Math.random() * 4 + 1;
+          this.speedX = (Math.random() - 0.5) * 1;
+          this.speedY = (Math.random() - 0.5) * 1 + 0.5;
+          this.color = `hsl(${Math.random() * 60 + 20}, 100%, 70%)`;
+          this.life = 1;
+        }
+        update() {
+          this.x += this.speedX;
+          this.y += this.speedY;
+          this.life -= 0.02;
+        }
+        draw(ctx) {
+          ctx.fillStyle = this.color;
+          ctx.globalAlpha = this.life;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      function getRealisticTreeColor(yNorm, rNormFromCenter) {
+        let h = 140 + Math.random() * 15;
+        let s = 45;
+        let l = 10 + rNormFromCenter * 20 + yNorm * 10;
+        if (rNormFromCenter < 0.4) {
+          l *= 0.6;
+          s *= 0.8;
+        }
+        return `hsl(${h}, ${s}%, ${l}%)`;
+      }
+
+      function init() {
+        renderList = [];
+        snow = [];
+        magicParticles = [];
+        animationFrameCount = 0;
+        globalLightState.cycleFrame = 0;
+
+        for (let i = 0; i < 400; i++) {
+          let y = Math.random() * config.trunkHeight;
+          let r = Math.sqrt(Math.random()) * config.trunkRadius;
+          let angle = Math.random() * Math.PI * 2;
+          renderList.push(
+            new TrunkPart(r * Math.cos(angle), y, r * Math.sin(angle))
+          );
+        }
+        for (let i = 0; i < config.leafCount; i++) {
+          let yNorm = Math.pow(Math.random(), 1.2);
+          let y = config.trunkHeight + yNorm * config.treeHeight;
+          let layerEffect =
+            0.8 + 0.2 * Math.sin(yNorm * Math.PI * (config.layerCount * 2.2));
+          let maxRadiusAtY = config.baseRadius * (1 - yNorm) * layerEffect;
+          let r = Math.sqrt(Math.random()) * maxRadiusAtY;
+          let angle = Math.random() * Math.PI * 2;
+          let tx = r * Math.cos(angle);
+          let tz = r * Math.sin(angle);
+          renderList.push(
+            new DirectionalLeaf(
+              tx,
+              y,
+              tz,
+              getRealisticTreeColor(yNorm, r / maxRadiusAtY)
+            )
+          );
+        }
+        for (let i = 0; i < config.lightCount; i++) {
+          let t = i / (config.lightCount - 1);
+          let y = config.trunkHeight + Math.pow(t, 1.5) * config.treeHeight;
+          let angle =
+            t * config.lightSpiralTurns * Math.PI * 2 + Math.random() * 0.5;
+          let actualYNorm = (y - config.trunkHeight) / config.treeHeight;
+          let smoothConeRadius = config.baseRadius * (1 - actualYNorm);
+          let currentRadius = smoothConeRadius * 1.05;
+          currentRadius += (Math.random() - 0.5) * 3;
+          let tx = currentRadius * Math.cos(angle);
+          let tz = currentRadius * Math.sin(angle);
+          renderList.push(new Light(tx, y, tz));
+        }
+        for (let i = 0; i < config.giftCount + config.stockingCount; i++) {
+          let yNorm = Math.random() * 0.85;
+          let y = config.trunkHeight + yNorm * config.treeHeight;
+          let smoothConeRadius = config.baseRadius * (1 - yNorm);
+          let currentRadius = smoothConeRadius * 1.15;
+          let angle = Math.random() * Math.PI * 2;
+          let tx = currentRadius * Math.cos(angle);
+          let tz = currentRadius * Math.sin(angle);
+          if (i < config.giftCount) renderList.push(new GiftBox(tx, y, tz));
+          else renderList.push(new Stocking(tx, y, tz));
+        }
+        renderList.push(new StarTop());
+        for (let i = 0; i < 150; i++) snow.push(new Snowflake());
+      }
+
+      function resetAnimation() {
+        init();
+        const msg = document.querySelector(".message");
+        msg.style.animation = "none";
+        msg.offsetHeight;
+        msg.style.animation = "fadeInMessage 2s forwards";
+        msg.style.animationDelay = "1s";
+      }
+
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        init();
+      }
+
+      const onMove = (clientX, clientY) => {
+        mouseX = clientX;
+        mouseY = clientY;
+        for (let i = 0; i < 3; i++)
+          magicParticles.push(new MagicParticle(mouseX, mouseY));
+      };
+
+      canvas.addEventListener("mousemove", (e) => onMove(e.clientX, e.clientY));
+      canvas.addEventListener(
+        "touchmove",
+        (e) => {
+          e.preventDefault();
+          onMove(e.touches[0].clientX, e.touches[0].clientY);
+        },
+        { passive: false }
+      );
+      window.addEventListener("resize", resize);
+
+      function animate() {
+        ctx.clearRect(0, 0, width, height);
+        animationFrameCount++;
+        if (config.autoRotate) currentAngleY += config.rotationSpeed;
+
+        // Global Light Logic
+        const WAVE_PERIOD = 400; // Sóng chậm
+        const BLINK_PERIOD = 40; // Chớp tắt nhanh vừa phải
+        // 1.3 để cho sóng đi hết ngọn cây + khoảng nghỉ
+        const WAVE_DURATION_FRAMES = WAVE_PERIOD * 1.3;
+        const BLINK_CYCLES = 3; // 3 lần bật + 3 lần tắt
+        const TOTAL_CYCLE =
+          WAVE_DURATION_FRAMES + BLINK_PERIOD * BLINK_CYCLES * 2;
+
+        // Tính frame hiện tại trong chu kỳ lớn
+        let currentCycleFrame =
+          (animationFrameCount * config.assemblySpeedMult) % TOTAL_CYCLE;
+
+        if (currentCycleFrame < WAVE_DURATION_FRAMES) {
+          globalLightState.mode = "WAVE";
+          // Wave pos đi từ 0.0 đến 1.3
+          globalLightState.wavePos =
+            (currentCycleFrame / WAVE_DURATION_FRAMES) * 1.3;
+        } else {
+          globalLightState.mode = "BLINK";
+          let blinkTime = currentCycleFrame - WAVE_DURATION_FRAMES;
+          let blinkIndex = Math.floor(blinkTime / BLINK_PERIOD);
+          // Chẵn = Bật, Lẻ = Tắt
+          globalLightState.blinkOn = blinkIndex % 2 === 0;
+        }
+
+        snow.forEach((s) => {
+          s.update();
+          s.draw(ctx);
+        });
+
+        for (let i = 0; i < magicParticles.length; i++) {
+          magicParticles[i].update();
+          magicParticles[i].draw(ctx);
+          if (magicParticles[i].life <= 0) {
+            magicParticles.splice(i, 1);
+            i--;
+          }
+        }
+
+        renderList.forEach((obj) => {
+          obj.updatePosition(animationFrameCount);
+          obj.project(currentAngleY);
+        });
+
+        renderList.sort((a, b) => b.rz - a.rz);
+
+        renderList.forEach((obj) => {
+          if (obj instanceof DirectionalLeaf) obj.draw(ctx, currentAngleY);
+          else if (obj instanceof Light) obj.draw(ctx, animationFrameCount);
+          else if (obj instanceof StarTop) obj.draw(ctx, animationFrameCount);
+          else if (obj instanceof GiftBox) obj.draw(ctx);
+          else if (obj instanceof Stocking) obj.draw(ctx);
+          else obj.draw(ctx);
+        });
+        requestAnimationFrame(animate);
+      }
+
+      resize();
+      animate();
+    </script>
+  </body>
+</html>
