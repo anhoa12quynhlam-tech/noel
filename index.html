@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Giáng Sinh 2025 - Full Power</title>
+    <title>Giáng Sinh 2024 - Stardust Delivery</title>
     <style>
       body {
         margin: 0;
@@ -120,7 +120,7 @@
         }
       }
       .main-text {
-        font-size: 2rem;
+        font-size: 4rem;
         font-weight: 800;
         letter-spacing: 3px;
         background: linear-gradient(to bottom, #fff 20%, #ffd700 80%);
@@ -239,6 +239,9 @@
       let renderList = [],
         snow = [],
         magicParticles = [];
+      let santa,
+        santaTrail = [],
+        fallingGifts = [];
       let animationFrameCount = 0;
 
       const config = {
@@ -258,6 +261,9 @@
         assemblySpeedMult: parseFloat(assemblySpeedInput.value),
         autoRotate: true,
         lightSpiralTurns: 7,
+        // Tăng thời gian bay để đường bay ngang chậm hơn chút
+        santaFlightDuration: 1800,
+        santaWaitDuration: 200,
       };
 
       let currentAngleY = 0;
@@ -265,13 +271,14 @@
         mouseY = 0;
       let cosCamX, sinCamX;
 
-      // --- GLOBAL LIGHT STATE ---
+      // --- GLOBAL STATES ---
       let globalLightState = {
         mode: "WAVE",
         wavePos: 0,
         blinkOn: false,
         cycleFrame: 0,
       };
+      let santaState = { flying: true, timer: 0, giftDropped: false };
 
       function updateCamera() {
         config.cameraXAngle = -parseFloat(angleInput.value);
@@ -295,6 +302,7 @@
         () => (config.assemblySpeedMult = parseFloat(assemblySpeedInput.value))
       );
 
+      // --- 3D Base ---
       class Point3D {
         constructor(tx, ty, tz) {
           this.tx = tx;
@@ -332,10 +340,287 @@
             this.scale = config.focalLength / zPerspective;
             this.sx = width / 2 + x1 * this.scale;
             let viewOffset = parseFloat(angleInput.value) * 150;
-            this.sy = height / 2 - y2 * this.scale + height * 0.4 + viewOffset;
+            this.sy = height / 2 - y2 * this.scale + height * 0.15 + viewOffset;
           } else {
             this.scale = 0;
           }
+        }
+      }
+
+      // --- SANTA SLEIGH (QUỸ ĐẠO MỚI: BAY NGANG ĐỈNH) ---
+      class SantaSleigh extends Point3D {
+        constructor() {
+          super(0, 0, 0);
+          this.baseSize = 25;
+          // Độ cao bay: Cao hơn đỉnh cây và ngôi sao một chút (khoảng 150 đơn vị)
+          this.flightHeight = config.trunkHeight + config.treeHeight + 150;
+        }
+
+        updateFlightPath(progress) {
+          // progress 0 -> 1
+
+          // X: Bay từ trái (-3500) sang phải (+3500)
+          this.tx = (progress - 0.5) * 7000;
+
+          // Y: Giữ nguyên độ cao trên đỉnh
+          this.ty = this.flightHeight;
+
+          // Z: Bay ngay trên trục giữa cây
+          this.tz = 0;
+
+          this.x = this.tx;
+          this.y = this.ty;
+          this.z = this.tz;
+
+          // Vùng thả quà: Rất hẹp ở giữa (khi ngay trên đỉnh)
+          return progress > 0.49 && progress < 0.51;
+        }
+
+        draw(ctx, currentTreeRotation) {
+          if (this.scale <= 0 || !santaState.flying) return;
+
+          ctx.save();
+          ctx.translate(this.sx, this.sy);
+
+          // Lật trục X để tuần lộc đi trước
+          ctx.scale(-this.scale, this.scale);
+
+          // Nghiêng nhẹ theo trục X để tạo cảm giác chuyển động
+          let tilt = (this.tx / 3500) * 0.1;
+          ctx.rotate(-tilt);
+
+          // --- VẼ CHI TIẾT (Giữ nguyên) ---
+          for (let i = 1; i <= 4; i++) {
+            let xOffset = i * 35;
+            let grdBody = ctx.createRadialGradient(
+              xOffset - 2,
+              8,
+              2,
+              xOffset,
+              10,
+              15
+            );
+            grdBody.addColorStop(0, "#A0522D");
+            grdBody.addColorStop(1, "#603010");
+            ctx.fillStyle = grdBody;
+            ctx.beginPath();
+            ctx.ellipse(xOffset, 10, 14, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            let grdHead = ctx.createRadialGradient(
+              xOffset + 12,
+              5,
+              1,
+              xOffset + 15,
+              5,
+              8
+            );
+            grdHead.addColorStop(0, "#B06030");
+            grdHead.addColorStop(1, "#703815");
+            ctx.fillStyle = grdHead;
+            ctx.beginPath();
+            ctx.ellipse(xOffset + 15, 5, 8, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#D2B48C";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(xOffset + 15, 0);
+            ctx.lineTo(xOffset + 18, -8);
+            ctx.lineTo(xOffset + 22, -10);
+            ctx.moveTo(xOffset + 15, 0);
+            ctx.lineTo(xOffset + 12, -8);
+            ctx.lineTo(xOffset + 8, -10);
+            ctx.stroke();
+          }
+          let grdNose = ctx.createRadialGradient(155, 5, 0, 155, 5, 5);
+          grdNose.addColorStop(0, "#ffcccc");
+          grdNose.addColorStop(1, "#800000");
+          ctx.fillStyle = grdNose;
+          ctx.beginPath();
+          ctx.arc(155, 5, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,215,0, 0.4)";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(140, 0);
+          ctx.stroke();
+          // Xe trượt
+          let grdSleigh = ctx.createLinearGradient(0, -25, 0, 15);
+          grdSleigh.addColorStop(0, "#ff6666");
+          grdSleigh.addColorStop(1, "#8B0000");
+          ctx.fillStyle = grdSleigh;
+          ctx.beginPath();
+          ctx.moveTo(-70, -25);
+          ctx.lineTo(10, -25);
+          ctx.quadraticCurveTo(30, -25, 30, 0);
+          ctx.lineTo(20, 15);
+          ctx.lineTo(-60, 15);
+          ctx.quadraticCurveTo(-80, 15, -70, -25);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "#C0C0C0";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(-80, 20);
+          ctx.lineTo(40, 20);
+          ctx.moveTo(-70, 15);
+          ctx.lineTo(-75, 20);
+          ctx.moveTo(20, 15);
+          ctx.lineTo(25, 20);
+          ctx.stroke();
+          // Ông già Noel
+          let grdSantaBody = ctx.createRadialGradient(
+            -25,
+            -30,
+            5,
+            -20,
+            -25,
+            20
+          );
+          grdSantaBody.addColorStop(0, "#ff4d4d");
+          grdSantaBody.addColorStop(1, "#b30000");
+          ctx.fillStyle = grdSantaBody;
+          ctx.beginPath();
+          ctx.ellipse(-20, -25, 18, 14, Math.PI / 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#FFE0BD";
+          ctx.beginPath();
+          ctx.arc(-20, -40, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#D32F2F";
+          ctx.beginPath();
+          ctx.moveTo(-28, -42);
+          ctx.lineTo(-12, -42);
+          ctx.lineTo(-20, -58);
+          ctx.fill();
+          let grdBeard = ctx.createRadialGradient(-20, -35, 2, -20, -32, 12);
+          grdBeard.addColorStop(0, "#ffffff");
+          grdBeard.addColorStop(1, "#d9d9d9");
+          ctx.fillStyle = grdBeard;
+          ctx.beginPath();
+          ctx.arc(-20, -35, 10, 0, Math.PI);
+          ctx.moveTo(-30, -35);
+          ctx.quadraticCurveTo(-32, -25, -20, -20);
+          ctx.moveTo(-10, -35);
+          ctx.quadraticCurveTo(-8, -25, -20, -20);
+          ctx.fill();
+
+          ctx.restore();
+        }
+      }
+
+      // --- LỚP QUÀ ĐANG RƠI ---
+      class FallingGift extends Point3D {
+        constructor(startX, startY, startZ) {
+          super(startX, startY, startZ);
+          this.x = startX;
+          this.y = startY;
+          this.z = startZ;
+          this.vy = 0;
+          this.gravity = 0.5;
+          // Điểm dừng: Rơi xuống khoảng giữa thân cây
+          this.targetY =
+            config.trunkHeight +
+            config.treeHeight * 0.3 +
+            Math.random() * (config.treeHeight * 0.3);
+          this.isLanded = false;
+        }
+        updateFall() {
+          if (this.isLanded) return;
+          this.vy += this.gravity;
+          this.y += this.vy;
+          if (this.y >= this.targetY) {
+            this.y = this.targetY;
+            this.isLanded = true;
+          }
+        }
+        draw(ctx) {
+          if (this.scale <= 0) return;
+          let s = (24 + Math.random() * 5) * this.scale;
+          let boxColor = Math.random() > 0.5 ? "#d32f2f" : "#ffd700";
+          let ribbonColor = boxColor === "#d32f2f" ? "#ffffff" : "#d32f2f";
+
+          ctx.fillStyle = boxColor;
+          ctx.fillRect(this.sx - s / 2, this.sy - s / 2, s, s);
+          ctx.fillStyle = ribbonColor;
+          let ribbonWidth = s * 0.2;
+          ctx.fillRect(
+            this.sx - ribbonWidth / 2,
+            this.sy - s / 2,
+            ribbonWidth,
+            s
+          );
+          ctx.fillRect(
+            this.sx - s / 2,
+            this.sy - ribbonWidth / 2,
+            s,
+            ribbonWidth
+          );
+        }
+      }
+
+      // --- VỆT SÁNG BỤI SAO (STARDUST TRAIL) ---
+      class SantaTrailParticle extends Point3D {
+        constructor(x, y, z) {
+          super(x, y, z);
+          // Tản mát ngẫu nhiên để tạo hiệu ứng bụi
+          this.x = x + (Math.random() - 0.5) * 25;
+          this.y = y + (Math.random() - 0.5) * 15;
+          this.z = z + (Math.random() - 0.5) * 25;
+          this.life = 1.0;
+          // Màu sắc: Vàng nhạt, trắng, xanh nhạt (màu sao)
+          const colors = [60, 50, 200, 0];
+          this.colorH = colors[Math.floor(Math.random() * colors.length)];
+          this.baseSize = 1 + Math.random() * 2.5; // Hạt nhỏ
+        }
+        updateLife() {
+          this.life -= 0.025;
+        } // Tan biến nhanh vừa phải
+        draw(ctx) {
+          if (this.scale <= 0 || this.life <= 0) return;
+          ctx.save();
+          ctx.globalAlpha = this.life * 0.7; // Hơi trong suốt
+
+          // Màu sáng, độ bão hòa thấp để giống bụi sao
+          ctx.fillStyle = `hsl(${this.colorH}, 80%, ${
+            80 + Math.random() * 20
+          }%)`;
+
+          let s = this.scale * this.baseSize * this.life;
+          ctx.beginPath();
+          ctx.arc(this.sx, this.sy, s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      class SnowBase extends Point3D {
+        constructor() {
+          super(0, 0, 0);
+          this.radius = config.baseRadius * 1.5;
+        }
+        draw(ctx) {
+          if (this.scale <= 0) return;
+          ctx.save();
+          ctx.translate(this.sx, this.sy);
+          ctx.scale(1, 0.25);
+          let r = this.radius * this.scale;
+          let grdShadow = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.6);
+          grdShadow.addColorStop(0, "rgba(0, 0, 0, 0.8)");
+          grdShadow.addColorStop(1, "rgba(0, 0, 0, 0)");
+          ctx.fillStyle = grdShadow;
+          ctx.beginPath();
+          ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2);
+          ctx.fill();
+          let grdSnow = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 1.2);
+          grdSnow.addColorStop(0, "rgba(255, 255, 255, 0.15)");
+          grdSnow.addColorStop(0.6, "rgba(255, 255, 255, 0.05)");
+          grdSnow.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.fillStyle = grdSnow;
+          ctx.beginPath();
+          ctx.arc(0, 0, r * 1.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
         }
       }
 
@@ -391,7 +676,6 @@
         }
       }
 
-      // --- ĐÈN LED: LOGIC MỚI (50% TRAIL) ---
       class Light extends Point3D {
         constructor(tx, ty, tz) {
           super(tx, ty, tz);
@@ -416,7 +700,7 @@
             this.opacityMultiplier += fadeSpeed;
           if (this.opacityMultiplier <= 0) return;
 
-          let intensity = 0.1; // Mặc định tối
+          let intensity = 0.1;
 
           if (globalLightState.mode === "WAVE") {
             let wavePos = globalLightState.wavePos;
@@ -424,20 +708,13 @@
             let dist = wavePos - h;
 
             if (dist > 0) {
-              // Đèn đã được quét qua -> Giữ sáng 50%
               let base = 0.5;
-
-              // Nếu sóng đã vượt quá đỉnh cây (wavePos > 1.0)
-              // Tăng dần độ sáng nền từ 50% lên 100% cho TẤT CẢ đèn
               if (wavePos > 1.0) {
-                let finishProgress = (wavePos - 1.0) / 0.2; // Trong khoảng 0.2 đơn vị sóng
+                let finishProgress = (wavePos - 1.0) / 0.2;
                 if (finishProgress > 1) finishProgress = 1;
-                base = 0.5 + 0.5 * finishProgress; // 0.5 -> 1.0
+                base = 0.5 + 0.5 * finishProgress;
               }
-
               intensity = base;
-
-              // Hiệu ứng đầu sóng (Head) sáng rực 100%
               if (dist < 0.3) {
                 let head = 1 - dist / 0.3;
                 intensity += 0.5 * head;
@@ -452,7 +729,6 @@
           let finalOpacity = intensity * this.opacityMultiplier;
           let s = this.scale;
 
-          // Glow
           if (intensity > 0.6) {
             ctx.globalAlpha = finalOpacity * 0.5;
             ctx.fillStyle = this.baseColor;
@@ -460,15 +736,12 @@
             ctx.arc(this.sx, this.sy, this.baseSize * s * 4, 0, Math.PI * 2);
             ctx.fill();
           }
-
-          // Core
           ctx.globalAlpha = finalOpacity;
           ctx.fillStyle = this.baseColor;
           ctx.beginPath();
           ctx.arc(this.sx, this.sy, this.baseSize * s, 0, Math.PI * 2);
           ctx.fill();
 
-          // Hotspot
           if (intensity > 0.9) {
             ctx.fillStyle = "#ffffff";
             ctx.beginPath();
@@ -560,7 +833,6 @@
 
           let starGlow = 0.4;
           if (globalLightState.mode === "WAVE") {
-            // Sáng rực khi sóng chạm đỉnh
             if (
               globalLightState.wavePos > 0.95 &&
               globalLightState.wavePos < 1.25
@@ -673,8 +945,14 @@
         renderList = [];
         snow = [];
         magicParticles = [];
+        santaTrail = [];
+        fallingGifts = [];
         animationFrameCount = 0;
         globalLightState.cycleFrame = 0;
+        santaState = { flying: true, timer: 0, giftDropped: false };
+
+        renderList.push(new SnowBase());
+        santa = new SantaSleigh();
 
         for (let i = 0; i < 400; i++) {
           let y = Math.random() * config.trunkHeight;
@@ -770,29 +1048,57 @@
         if (config.autoRotate) currentAngleY += config.rotationSpeed;
 
         // Global Light Logic
-        const WAVE_PERIOD = 400; // Sóng chậm
-        const BLINK_PERIOD = 40; // Chớp tắt nhanh vừa phải
-        // 1.3 để cho sóng đi hết ngọn cây + khoảng nghỉ
+        const WAVE_PERIOD = 400;
+        const BLINK_PERIOD = 40;
         const WAVE_DURATION_FRAMES = WAVE_PERIOD * 1.3;
-        const BLINK_CYCLES = 3; // 3 lần bật + 3 lần tắt
+        const BLINK_CYCLES = 3;
         const TOTAL_CYCLE =
           WAVE_DURATION_FRAMES + BLINK_PERIOD * BLINK_CYCLES * 2;
 
-        // Tính frame hiện tại trong chu kỳ lớn
         let currentCycleFrame =
           (animationFrameCount * config.assemblySpeedMult) % TOTAL_CYCLE;
 
         if (currentCycleFrame < WAVE_DURATION_FRAMES) {
           globalLightState.mode = "WAVE";
-          // Wave pos đi từ 0.0 đến 1.3
           globalLightState.wavePos =
             (currentCycleFrame / WAVE_DURATION_FRAMES) * 1.3;
         } else {
           globalLightState.mode = "BLINK";
           let blinkTime = currentCycleFrame - WAVE_DURATION_FRAMES;
           let blinkIndex = Math.floor(blinkTime / BLINK_PERIOD);
-          // Chẵn = Bật, Lẻ = Tắt
           globalLightState.blinkOn = blinkIndex % 2 === 0;
+        }
+
+        // --- SANTA FLIGHT & GIFT DROP LOGIC ---
+        santaState.timer++;
+        if (santaState.flying) {
+          let progress = santaState.timer / config.santaFlightDuration;
+          if (progress >= 1.0) {
+            santaState.flying = false;
+            santaState.timer = 0;
+            santaState.giftDropped = false;
+          } else {
+            let canDrop = santa.updateFlightPath(progress);
+            santa.project(currentAngleY);
+
+            if (canDrop && !santaState.giftDropped) {
+              fallingGifts.push(new FallingGift(santa.tx, santa.ty, santa.tz));
+              santaState.giftDropped = true;
+            }
+            // Tạo hiệu ứng bụi sao dày hơn
+            santaTrail.push(
+              new SantaTrailParticle(santa.tx, santa.ty, santa.tz)
+            );
+            if (animationFrameCount % 2 === 0)
+              santaTrail.push(
+                new SantaTrailParticle(santa.tx, santa.ty, santa.tz)
+              );
+          }
+        } else {
+          if (santaState.timer > config.santaWaitDuration) {
+            santaState.flying = true;
+            santaState.timer = 0;
+          }
         }
 
         snow.forEach((s) => {
@@ -809,6 +1115,36 @@
           }
         }
 
+        for (let i = 0; i < santaTrail.length; i++) {
+          santaTrail[i].project(currentAngleY);
+          santaTrail[i].updateLife();
+          santaTrail[i].draw(ctx);
+          if (santaTrail[i].life <= 0) {
+            santaTrail.splice(i, 1);
+            i--;
+          }
+        }
+
+        // --- CẬP NHẬT & VẼ QUÀ ĐANG RƠI ---
+        for (let i = 0; i < fallingGifts.length; i++) {
+          fallingGifts[i].updateFall();
+          fallingGifts[i].project(currentAngleY);
+          if (fallingGifts[i].isLanded) {
+            let newGift = new GiftBox(
+              fallingGifts[i].tx,
+              fallingGifts[i].ty,
+              fallingGifts[i].tz
+            );
+            newGift.delay = 0;
+            newGift.scale = 1;
+            renderList.push(newGift);
+            fallingGifts.splice(i, 1);
+            i--;
+          } else {
+            fallingGifts[i].draw(ctx);
+          }
+        }
+
         renderList.forEach((obj) => {
           obj.updatePosition(animationFrameCount);
           obj.project(currentAngleY);
@@ -822,8 +1158,13 @@
           else if (obj instanceof StarTop) obj.draw(ctx, animationFrameCount);
           else if (obj instanceof GiftBox) obj.draw(ctx);
           else if (obj instanceof Stocking) obj.draw(ctx);
+          else if (obj instanceof SnowBase) obj.draw(ctx);
           else obj.draw(ctx);
         });
+
+        // Vẽ Santa sau cùng vì bay ngay trên đỉnh
+        if (santaState.flying) santa.draw(ctx, currentAngleY);
+
         requestAnimationFrame(animate);
       }
 
